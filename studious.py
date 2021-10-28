@@ -10,7 +10,14 @@ import ebooklib
 from ebooklib import epub
 
 import xml.etree.ElementTree as ETree
-     
+
+def unique_list(l):
+    ulist = []
+    for item in l:
+        if item not in ulist:
+            ulist.append(item)
+    return ulist
+
 # Inheriting from QMainWindow broke the layouts.
 class MainWindow(qtw.QMainWindow):
 
@@ -93,13 +100,20 @@ class MainWindow(qtw.QMainWindow):
         
     def process_toc(self, toc_node, treenode):
         """ Map the epub ToC structure to a Qt tree view."""
-        #rowCount = 0 # rows at each level
+        # rowCount = 0 # rows at each level
+        # store and return hrefs for the correct ordering
+        # hrefs = []
+        filename_anchors = False
         for toc_entry in toc_node:
-            # print(toc_entry) # debug
+            # print(type(toc_entry)) # epub.Link or tuple
             if hasattr(toc_entry, 'title'):
+                # print(toc_entry.__dict__)
                 newRow = qtw.QTreeWidgetItem(treenode)
                 newRow.setText(self.SECTION, toc_entry.title)
                 newRow.setText(self.HREF, toc_entry.href)
+                if len(toc_entry.href.split('#')) < 2:
+                    filename_anchors = True
+                # hrefs.append(toc_entry.href.split('#')[0])
                 #self.tocModel.insertRow(rowCount)
                 #self.tocModel.setData(
                 #    self.tocModel.index(level, rowCount), # self.SECTION),
@@ -110,35 +124,47 @@ class MainWindow(qtw.QMainWindow):
                 newRow.setText(self.SECTION, toc_entry[0].title)
                 newRow.setText(self.HREF, toc_entry[0].href)
                 #newLevel = qtw.QTreeWidgetItem(treenode)
-                self.process_toc(toc_entry[1], newRow) # newLevel
-        
+                # hrefs += self.process_toc(toc_entry[1], newRow) # newLevel
+                filename_anchors |= self.process_toc(toc_entry[1], newRow)
+        return filename_anchors
+
+    
     def load_epub(self, filename):
         the_epub = epub.read_epub(filename)
-        for k,v in the_epub.__dict__.items():
-            print(k, ':', v)
+        #for k,v in the_epub.__dict__.items():
+        #    print(k, ':', v)
             
-        doc_items = the_epub.get_items_of_type(ebooklib.ITEM_DOCUMENT)
-        doc_list = list(doc_items)
-        for item in doc_list:
+        #doc_items = the_epub.get_items_of_type(ebooklib.ITEM_DOCUMENT)
+        #doc_list = list(doc_items)
+        # all_items = the_epub.get_items()
+        # for item in list(all_items):
             # will I have to make my own dictionary of these?
-            print("ITEM", item.file_name)
-        #self.tocPane.setPlainText("")
+            # print("ITEM", item.file_name, item.get_id(), item.get_type())
+        #file_hrefs = unique_list(self.process_toc(the_epub.toc, self.tocPane))
+
+        print(the_epub.spine)
+        filename_anchors = self.process_toc(the_epub.toc, self.tocPane)
+        if filename_anchors:
+            print("epub has toc links with filename only")
+
         # suppress "html" namespace prefix.
         ETree.register_namespace('', 'http://www.w3.org/1999/xhtml')
-        self.process_toc(the_epub.toc, self.tocPane)
-        # TODO: sort list based on TOC. could be return value?
-        ch1_text = doc_list[0].get_content().decode('utf-8')
-        doc_tree = ETree.fromstring(ch1_text)
+        # TODO: loop to get the first item that's linear.
+        first_item = the_epub.get_item_with_id(the_epub.spine[0][0])
+        # merge all the HTML file bodies into one.
+        first_text = first_item.get_content().decode('utf-8')
+        doc_tree = ETree.fromstring(first_text)
         doc_body = doc_tree.find('{http://www.w3.org/1999/xhtml}body')
-        for doc in doc_list[1:]:
-            text = doc.get_content().decode('utf-8')
+        for uid, linear in the_epub.spine[1:]: # file_hrefs[1:]:
+            # TODO: if it's not linear, put it at the end.
+            text = the_epub.get_item_with_id(uid).get_content().decode('utf-8')
             tree = ETree.fromstring(text)
             body = tree.find('{http://www.w3.org/1999/xhtml}body')
+            # body.insert (anchor element, 0)?
             for child in body:
                 doc_body.append(child)
 
         fulltext = ETree.tostring(doc_tree, encoding='unicode')
-        #print(fulltext)
         self.mainText.setHtml(fulltext)
         # self.mainText.setHtml(ch1_bytes.decode('utf-8'))
         # good to set this at the end if it fails?
