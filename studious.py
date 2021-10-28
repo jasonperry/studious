@@ -89,8 +89,10 @@ class MainWindow(qtw.QMainWindow):
         if len(splitUrl) > 1:
             self.mainText.scrollToAnchor(splitUrl[1])
         else:
-            print("url with no anchor...problem...")
+            #print("url with no anchor...problem...")
+            self.mainText.scrollToAnchor(urlStr)
         # TODO: move TOC highlight to wherever I jumped to
+        #  (probably with a trigger for the scroll event)
     
     def jump_to_tocitem(self, item):
         self.jump_to(item.text(1))
@@ -113,7 +115,8 @@ class MainWindow(qtw.QMainWindow):
                 newRow.setText(self.HREF, toc_entry.href)
                 if len(toc_entry.href.split('#')) < 2:
                     filename_anchors = True
-                # hrefs.append(toc_entry.href.split('#')[0])
+                #newRow.setExpanded(True)
+                ## leaving this here in case we ever need a custom model?
                 #self.tocModel.insertRow(rowCount)
                 #self.tocModel.setData(
                 #    self.tocModel.index(level, rowCount), # self.SECTION),
@@ -126,6 +129,7 @@ class MainWindow(qtw.QMainWindow):
                 #newLevel = qtw.QTreeWidgetItem(treenode)
                 # hrefs += self.process_toc(toc_entry[1], newRow) # newLevel
                 filename_anchors |= self.process_toc(toc_entry[1], newRow)
+                newRow.setExpanded(True)
         return filename_anchors
 
     
@@ -157,17 +161,21 @@ class MainWindow(qtw.QMainWindow):
         doc_body = doc_tree.find('{http://www.w3.org/1999/xhtml}body')
         for uid, linear in the_epub.spine[1:]: # file_hrefs[1:]:
             # TODO: if it's not linear, put it at the end.
-            text = the_epub.get_item_with_id(uid).get_content().decode('utf-8')
+            the_item = the_epub.get_item_with_id(uid)
+            text = the_item.get_content().decode('utf-8')
             tree = ETree.fromstring(text)
             body = tree.find('{http://www.w3.org/1999/xhtml}body')
             # body.insert (anchor element, 0)?
+            if filename_anchors:
+                toc_anchor = ETree.Element('a', {'name': the_item.get_name()})
+                doc_body.append(toc_anchor)
             for child in body:
                 doc_body.append(child)
 
         fulltext = ETree.tostring(doc_tree, encoding='unicode')
         self.mainText.setHtml(fulltext)
-        # self.mainText.setHtml(ch1_bytes.decode('utf-8'))
-        # good to set this at the end if it fails?
+        # print(fulltext)
+        # good to set this at the end, in case it fails?
         self.the_epub = the_epub
 
 
