@@ -69,11 +69,15 @@ class MainWindow(qtw.QMainWindow):
         self.mainText.setFont(mainText_font)
         self.mainText.setOpenLinks(False)
         self.mainText.anchorClicked.connect(self.jump_to_qurl)
+        self.mainText.cursorPositionChanged.connect(self.update_location)
 
         topLayout.addLayout(centerLayout)
         centerLayout.addWidget(self.mainText)
 
         self.show()
+
+    def update_location(self):
+        print("Cursor position:", self.mainText.textCursor().position())
 
     #def create_toc_model(self, parent):
     #    model = qtg.QStandardItemModel(0, 1, parent)
@@ -93,6 +97,14 @@ class MainWindow(qtw.QMainWindow):
             self.mainText.scrollToAnchor(urlStr)
         # TODO: move TOC highlight to wherever I jumped to
         #  (probably with a trigger for the scroll event)
+        # first step: move the cursor to where we are and get its location.
+        #  or should I do that only when they click?
+        browserRect = self.mainText.rect()
+        newCursor = self.mainText.cursorForPosition(browserRect.topLeft())
+        #newcursor = self.mainText.cursorForPosition(qtc.QPoint(0,0))
+        self.mainText.setTextCursor(newCursor)
+        print("new cursor rect position:", self.mainText.cursorRect())
+        print("Cursor position:", self.mainText.textCursor().position())
     
     def jump_to_tocitem(self, item):
         self.jump_to(item.text(1))
@@ -174,6 +186,7 @@ class MainWindow(qtw.QMainWindow):
 
         fulltext = ETree.tostring(doc_tree, encoding='unicode')
         self.mainText.setHtml(fulltext)
+        print("Cursor position:", self.mainText.cursorRect())
         # print(fulltext)
         # good to set this at the end, in case it fails?
         self.the_epub = the_epub
