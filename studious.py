@@ -44,25 +44,41 @@ class MainWindow(qtw.QMainWindow):
         window.setLayout(topLayout)
         
         leftLayout = qtw.QVBoxLayout()
-        #testButton = qtw.QPushButton("Push Me", self)
-        #leftLayout.addWidget(testButton)
+        topLayout.addLayout(leftLayout)
+        leftSplitter = qtw.QSplitter(self) # or add to top hlayout?
+        leftLayout.addWidget(leftSplitter)
 
-        #self.tocPane = qtw.QTreeView(self)
         self.tocPane = qtw.QTreeWidget(self)
         self.tocPane.setColumnCount(2)
         self.tocPane.setHeaderLabels(["Section", "Link"])
         # self.tocPane.hideColumn(1)  # leaving visible for devel
         self.tocPane.itemClicked.connect(self.jump_to_tocitem)
-        # self.tocModel = self.create_toc_model(self)
-        # self.tocPane.setModel(self.tocModel)
-        
-        topLayout.addLayout(leftLayout)
-        leftLayout.addWidget(self.tocPane)
+        #leftLayout.addWidget(self.tocPane)
+        leftSplitter.addWidget(self.tocPane)
 
-        centerLayout = qtw.QVBoxLayout()
+        ## 1. use a new hbox layout to have no splitter on the right
+        rightFrame = qtw.QFrame(self)
+        ## these didn't make any difference at all.
+        # rightFrame.setFrameStyle(qtw.QFrame.NoFrame)
+        # rightFrame.setContentsMargins(qtc.QMargins(0,0,0,0))
+        leftSplitter.addWidget(rightFrame)
+        rightHLayout = qtw.QHBoxLayout()
+        rightFrame.setLayout(rightHLayout)
+
+        ## 2. sub-splitter on the right
+        # rightSplitter = qtw.QSplitter(self)
+        # leftSplitter.addWidget(rightSplitter)
+        ## 2a. to have the right splitter be separate
+        # topLayout.addWidget(rightSplitter)
+
+        ## 3. just 3 vboxes, no splitters
+        # centerLayout = qtw.QVBoxLayout()
+        # topLayout.addLayout(centerLayout)
+
         self.mainText = qtw.QTextBrowser(self)
+        # this isn't doing anything, is it reading the css instead?
         self.mainText.style = """
-          <style>body{ margin: 15px; line-height: 130% }</style>
+          <style>body{ margin: 30px; line-height: 130% }</style>
         """
         mainText_font = qtg.QFont('Liberation Serif', 11)
         mainText_font.setStyleHint(qtg.QFont.Serif)
@@ -70,9 +86,25 @@ class MainWindow(qtw.QMainWindow):
         self.mainText.setOpenLinks(False)
         self.mainText.anchorClicked.connect(self.jump_to_qurl)
         self.mainText.cursorPositionChanged.connect(self.update_location)
+        rightHLayout.addWidget(self.mainText) # 1
+        # rightSplitter.addWidget(self.mainText) # 2
+        # centerLayout.addWidget(self.mainText) # 3
 
-        topLayout.addLayout(centerLayout)
-        centerLayout.addWidget(self.mainText)
+        # horizontal and vertical is flipped from what I thought.
+        self.mainText.setFixedWidth(400)
+        # this has no effect if fixedwidth is set.
+        # and it doesn't stick to preferred if there's a splitter.
+        self.mainText.setSizePolicy(qtw.QSizePolicy.Maximum,
+                                     qtw.QSizePolicy.Preferred)
+
+        # will need this vboxlayout if we add something below the notes.
+        # rightLayout = qtw.QVBoxLayout()
+        self.notesFrame = qtw.QTextEdit(self)
+        # topLayout.addLayout(rightLayout)
+        # rightHLayout.addLayout(rightLayout)   # 1
+        rightHLayout.addWidget(self.notesFrame) # 1 no layout
+        # rightSplitter.addWidget(self.notesFrame) # 2 
+        # rightLayout.addWidget(self.notesFrame) # 3
 
         self.show()
 
@@ -110,6 +142,8 @@ class MainWindow(qtw.QMainWindow):
         self.jump_to(item.text(1))
 
     def jump_to_qurl(self, url):
+        # TODO: if it's not a local file one, don't jump, just ignore
+        #  (or open in browser)
         self.jump_to(url.toString())
         
     def process_toc(self, toc_node, treenode):
