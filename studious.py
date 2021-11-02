@@ -18,12 +18,44 @@ def unique_list(l):
             ulist.append(item)
     return ulist
 
+
+class EPubTextBrowser(qtw.QTextBrowser): 
+    
+    def set_epub(self, the_epub):
+        self.the_epub = the_epub
+
+    def loadResource(self, restype, url):
+        if restype == 2 and url.isRelative():
+            print("Image resource found: ", url.toDisplayString())
+            # get file part of it. OR, load as path from zip?
+            # for now, assume filename part of URL is the ID.
+            imgHref = url.toDisplayString()
+            if imgHref.startswith("../"):
+                imgHref = imgHref[3:]
+            image = self.the_epub.get_item_with_href(imgHref)
+            # image = self.the_epub.get_item_with_id(url.fileName())
+            if image:
+                print("successfully loaded image of type", type(image))
+                image = qtg.QImage.fromData(image.get_content())
+                if image.width() > self.width():
+                    image = image.scaledToWidth(
+                        self.width(),
+                        mode=qtc.Qt.TransformationMode.SmoothTransformation)
+                # It accepts anything as the variant! Python!
+                return image
+            else:
+                print("image load failed")
+            # should we fetch external images? maybe not
+        super(EPubTextBrowser, self).loadResource(restype, url)
+        
 # Inheriting from QMainWindow broke the layouts.
+# Should I make another class for the book itself?
 class MainWindow(qtw.QMainWindow):
 
     SECTION = 0 # constants for the treeview
     HREF = 1
-    
+
+   
     def __init__(self):
         # The book doesn't pass the class and object.
         super(MainWindow, self).__init__()
@@ -75,7 +107,7 @@ class MainWindow(qtw.QMainWindow):
         # centerLayout = qtw.QVBoxLayout()
         # topLayout.addLayout(centerLayout)
 
-        self.mainText = qtw.QTextBrowser(self)
+        self.mainText = EPubTextBrowser(self) #qtw.QTextBrowser(self)
         # this isn't doing anything, is it reading the css instead?
         self.mainText.style = """
           <style>body{ margin: 30px; line-height: 130% }</style>
@@ -142,9 +174,9 @@ class MainWindow(qtw.QMainWindow):
         self.jump_to(item.text(1))
 
     def jump_to_qurl(self, url):
-        # TODO: if it's not a local file one, don't jump, just ignore
-        #  (or open in browser)
-        self.jump_to(url.toString())
+        # TODO: popup asking if want to open in browser
+        if url.isRelative():
+            self.jump_to(url.toString())
         
     def process_toc(self, toc_node, treenode):
         """ Map the epub ToC structure to a Qt tree view."""
@@ -181,16 +213,16 @@ class MainWindow(qtw.QMainWindow):
     
     def load_epub(self, filename):
         the_epub = epub.read_epub(filename)
+        self.mainText.set_epub(the_epub)
         #for k,v in the_epub.__dict__.items():
         #    print(k, ':', v)
             
         #doc_items = the_epub.get_items_of_type(ebooklib.ITEM_DOCUMENT)
         #doc_list = list(doc_items)
-        # all_items = the_epub.get_items()
-        # for item in list(all_items):
+        all_items = the_epub.get_items()
+        for item in list(all_items):
             # will I have to make my own dictionary of these?
-            # print("ITEM", item.file_name, item.get_id(), item.get_type())
-        #file_hrefs = unique_list(self.process_toc(the_epub.toc, self.tocPane))
+            print("ITEM", item.file_name, item.get_id(), item.get_type())
 
         print(the_epub.spine)
         filename_anchors = self.process_toc(the_epub.toc, self.tocPane)
@@ -220,7 +252,10 @@ class MainWindow(qtw.QMainWindow):
 
         fulltext = ETree.tostring(doc_tree, encoding='unicode')
         self.mainText.setHtml(fulltext)
-        print("Cursor position:", self.mainText.cursorRect())
+        # TODO: have spinny until finished loading, so it won't be
+        #  unresponsive (see the Bible)
+        # this lies, it says before finished loading images
+        print("load finished.") 
         # print(fulltext)
         # good to set this at the end, in case it fails?
         self.the_epub = the_epub
