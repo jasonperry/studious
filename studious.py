@@ -5,11 +5,14 @@ import sys
 from PySide2 import QtWidgets as qtw
 from PySide2 import QtGui as qtg
 from PySide2 import QtCore as qtc
+# from PySide2 import QtWebEngineWidgets as qtwe
 
 import ebooklib
 from ebooklib import epub
 
 import xml.etree.ElementTree as ETree
+
+_debug = False
 
 def unique_list(l):
     ulist = []
@@ -19,12 +22,13 @@ def unique_list(l):
     return ulist
 
 
-class EPubTextBrowser(qtw.QTextBrowser): 
-    
+class EPubTextBrowser(qtw.QTextBrowser):
+    """Derived QTW class for the main text view."""
     def set_epub(self, the_epub):
         self.the_epub = the_epub
 
     def loadResource(self, restype, url):
+        """Override to load images that are within the epub."""
         if restype == 2 and url.isRelative():
             print("Image resource found: ", url.toDisplayString())
             # get file part of it. OR, load as path from zip?
@@ -37,9 +41,9 @@ class EPubTextBrowser(qtw.QTextBrowser):
             if image:
                 print("successfully loaded image of type", type(image))
                 image = qtg.QImage.fromData(image.get_content())
-                if image.width() > self.width():
+                if image.width() > (self.width() * 0.8):
                     image = image.scaledToWidth(
-                        self.width(),
+                        self.width() * 0.8,
                         mode=qtc.Qt.TransformationMode.SmoothTransformation)
                 # It accepts anything as the variant! Python!
                 return image
@@ -57,6 +61,7 @@ class MainWindow(qtw.QMainWindow):
 
    
     def __init__(self):
+        """GUI Layout is built here."""
         # The book doesn't pass the class and object.
         super(MainWindow, self).__init__()
 
@@ -67,7 +72,7 @@ class MainWindow(qtw.QMainWindow):
         self.setCentralWidget(window)
         
         self.setWindowTitle("Studious Reader")
-        self.resize(800,600)
+        self.resize(960,600)
         menuBar = qtw.QMenuBar(self)
         fileMenu = menuBar.addMenu("&File")
         self.setMenuBar(menuBar)
@@ -83,7 +88,8 @@ class MainWindow(qtw.QMainWindow):
         self.tocPane = qtw.QTreeWidget(self)
         self.tocPane.setColumnCount(2)
         self.tocPane.setHeaderLabels(["Section", "Link"])
-        # self.tocPane.hideColumn(1)  # leaving visible for devel
+        if not _debug:
+            self.tocPane.hideColumn(1)
         self.tocPane.itemClicked.connect(self.jump_to_tocitem)
         #leftLayout.addWidget(self.tocPane)
         leftSplitter.addWidget(self.tocPane)
@@ -109,10 +115,12 @@ class MainWindow(qtw.QMainWindow):
 
         self.mainText = EPubTextBrowser(self) #qtw.QTextBrowser(self)
         # this isn't doing anything, is it reading the css instead?
-        self.mainText.style = """
-          <style>body{ margin: 30px; line-height: 130% }</style>
-        """
-        mainText_font = qtg.QFont('Liberation Serif', 11)
+        #self.mainText.style = """
+        #  <style>body{ margin-left: 60px; margin-right: 60px; line-height: 130% }</style>
+        #"""
+        self.mainText.document().setDefaultStyleSheet(
+            'body{ margin-left: 20px; margin-right: 20px; line-height: 110% }')
+        mainText_font = qtg.QFont('Liberation Serif', 12)
         mainText_font.setStyleHint(qtg.QFont.Serif)
         self.mainText.setFont(mainText_font)
         self.mainText.setOpenLinks(False)
@@ -123,7 +131,7 @@ class MainWindow(qtw.QMainWindow):
         # centerLayout.addWidget(self.mainText) # 3
 
         # horizontal and vertical is flipped from what I thought.
-        self.mainText.setFixedWidth(400)
+        self.mainText.setFixedWidth(500)
         # this has no effect if fixedwidth is set.
         # and it doesn't stick to preferred if there's a splitter.
         self.mainText.setSizePolicy(qtw.QSizePolicy.Maximum,
@@ -150,27 +158,38 @@ class MainWindow(qtw.QMainWindow):
     #    return model
 
     def jump_to(self, urlStr):
+        """Jump to an internal link. May refer to a separate page in the 
+        original epub, or to an anchor."""
+        if _debug:
+            print("Jumping to", urlStr)
         splitUrl = urlStr.split('#')
         href = splitUrl[0]
         # sectionText = self.the_epub.get_item_with_href(href).get_content()
         # self.mainText.setHtml(sectionText.decode('utf-8'))
         if len(splitUrl) > 1:
             self.mainText.scrollToAnchor(splitUrl[1])
+            if _debug:
+                print("ANCHORJUMP", splitUrl[1])
         else:
-            #print("url with no anchor...problem...")
+            if _debug:
+                print("URLJUMP:", urlStr)
             self.mainText.scrollToAnchor(urlStr)
-        # TODO: move TOC highlight to wherever I jumped to
-        #  (probably with a trigger for the scroll event)
-        # first step: move the cursor to where we are and get its location.
+        # Update cursor position by moving the cursor to where we are
+        # and getting its location.
         #  or should I do that only when they click?
+        # TODO: move TOC highlight to wherever I jumped to
+        #  (probably with a trigger for the scroll event, because
+        #   it should work for scrolling too)
         browserRect = self.mainText.rect()
         newCursor = self.mainText.cursorForPosition(browserRect.topLeft())
         #newcursor = self.mainText.cursorForPosition(qtc.QPoint(0,0))
         self.mainText.setTextCursor(newCursor)
-        print("new cursor rect position:", self.mainText.cursorRect())
-        print("Cursor position:", self.mainText.textCursor().position())
+        if _debug:
+            print("new cursor rect position:", self.mainText.cursorRect())
+            print("Cursor position:", self.mainText.textCursor().position())
     
     def jump_to_tocitem(self, item):
+        """Jump for a click in the Contents pane."""
         self.jump_to(item.text(1))
 
     def jump_to_qurl(self, url):
@@ -185,9 +204,11 @@ class MainWindow(qtw.QMainWindow):
         # hrefs = []
         filename_anchors = False
         for toc_entry in toc_node:
-            # print(type(toc_entry)) # epub.Link or tuple
+            if _debug:
+                print(type(toc_entry)) # epub.Link or tuple
             if hasattr(toc_entry, 'title'):
-                # print(toc_entry.__dict__)
+                if _debug:
+                    print(toc_entry.__dict__)
                 newRow = qtw.QTreeWidgetItem(treenode)
                 newRow.setText(self.SECTION, toc_entry.title)
                 newRow.setText(self.HREF, toc_entry.href)
@@ -202,6 +223,9 @@ class MainWindow(qtw.QMainWindow):
                 #rowCount += 1
             else: # it's a pair of the top level and sub-entries, so recurse
                 newRow = qtw.QTreeWidgetItem(treenode)
+                if _debug:
+                    print("tuple[0] is", type(toc_entry[0]))
+                    print(toc_entry[0].__dict__)
                 newRow.setText(self.SECTION, toc_entry[0].title)
                 newRow.setText(self.HREF, toc_entry[0].href)
                 #newLevel = qtw.QTreeWidgetItem(treenode)
@@ -239,19 +263,30 @@ class MainWindow(qtw.QMainWindow):
         doc_body = doc_tree.find('{http://www.w3.org/1999/xhtml}body')
         for uid, linear in the_epub.spine[1:]: # file_hrefs[1:]:
             # TODO: if it's not linear, put it at the end.
+            if _debug:
+                print("LOADITEM:", uid)
             the_item = the_epub.get_item_with_id(uid)
             text = the_item.get_content().decode('utf-8')
             tree = ETree.fromstring(text)
             body = tree.find('{http://www.w3.org/1999/xhtml}body')
             # body.insert (anchor element, 0)?
-            if filename_anchors:
-                toc_anchor = ETree.Element('a', {'name': the_item.get_name()})
-                doc_body.append(toc_anchor)
-            for child in body:
-                doc_body.append(child)
-
+            if filename_anchors: # create div elements if it's a filename
+                # tried 'name' and 'id'
+                toc_div = ETree.Element('div', {'id': the_item.get_name()})
+                if _debug:
+                    print("ANCHOR ADDED:", list(toc_div.items()))
+                for child in body:
+                    # why is 0 okay?
+                    toc_div.insert(0, child)
+                    print("CHILD ADDED")
+                doc_body.append(toc_div)
+            else:
+                for child in body:
+                    doc_body.append(child)
         fulltext = ETree.tostring(doc_tree, encoding='unicode')
         self.mainText.setHtml(fulltext)
+        if _debug:
+            print(fulltext)
         # TODO: have spinny until finished loading, so it won't be
         #  unresponsive (see the Bible)
         # this lies, it says before finished loading images
