@@ -55,7 +55,7 @@ class EPubTextBrowser(qtw.QTextBrowser):
 # Inheriting from QMainWindow broke the layouts.
 # Should I make another class for the book itself?
 class MainWindow(qtw.QMainWindow):
-
+    """UI Class for the Studious epub reader"""
     SECTION = 0 # constants for the treeview
     HREF = 1
 
@@ -73,8 +73,16 @@ class MainWindow(qtw.QMainWindow):
         
         self.setWindowTitle("Studious Reader")
         self.resize(960,600)
+
+        ### Menu items
+        # TODO: open.png doesn't exist
+        openPixmap = getattr(qtw.QStyle, 'SP_DialogOpenButton')
+        openIcon = self.style().standardIcon(openPixmap)
+        openAction = qtw.QAction(openIcon, '&Open', self)
+        openAction.triggered.connect(self.open_new_file)
         menuBar = qtw.QMenuBar(self)
         fileMenu = menuBar.addMenu("&File")
+        fileMenu.addAction(openAction)
         self.setMenuBar(menuBar)
         
         topLayout = qtw.QHBoxLayout()
@@ -148,6 +156,11 @@ class MainWindow(qtw.QMainWindow):
 
         self.show()
 
+    def open_new_file(self):
+        filePath, _ = qtw.QFileDialog.getOpenFileName(
+            self, caption="Load new ebook", filter="EPub files (*.epub)")
+        self.load_epub(filePath)
+        
     def update_location(self):
         print("Cursor position:", self.mainText.textCursor().position())
 
@@ -249,6 +262,7 @@ class MainWindow(qtw.QMainWindow):
             print("ITEM", item.file_name, item.get_id(), item.get_type())
 
         print(the_epub.spine)
+        self.tocPane.clear()
         filename_anchors = self.process_toc(the_epub.toc, self.tocPane)
         if filename_anchors:
             print("epub has toc links with filename only")
