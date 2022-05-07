@@ -14,7 +14,7 @@ from ebooklib import epub
 
 import xml.etree.ElementTree as ETree
 
-_debug = True
+_debug = False
 _dumpHTML = False
 
 def unique_list(l):
@@ -232,7 +232,10 @@ class MainWindow(qtw.QMainWindow):
                     print(toc_entry.__dict__)
                 newRow = qtw.QTreeWidgetItem(treenode)
                 newRow.setText(self.SECTION, toc_entry.title)
-                newRow.setText(self.HREF, toc_entry.href)
+                entry_href = toc_entry.href
+                if entry_href.startswith('xhtml/'):
+                    entry_href = entry_href[6:]
+                newRow.setText(self.HREF, entry_href)
                 if len(toc_entry.href.split('#')) < 2:
                     filename_anchors = True
                 #newRow.setExpanded(True)
@@ -248,7 +251,10 @@ class MainWindow(qtw.QMainWindow):
                     print("tuple[0] is", type(toc_entry[0]))
                     print(toc_entry[0].__dict__)
                 newRow.setText(self.SECTION, toc_entry[0].title)
-                newRow.setText(self.HREF, toc_entry[0].href)
+                entry_href = toc_entry[0].href
+                if entry_href.startswith('xhtml/'):
+                    entry_href = entry_href[6:]
+                newRow.setText(self.HREF, entry_href)
                 #newLevel = qtw.QTreeWidgetItem(treenode)
                 # hrefs += self.process_toc(toc_entry[1], newRow) # newLevel
                 filename_anchors |= self.process_toc(toc_entry[1], newRow)
@@ -295,7 +301,10 @@ class MainWindow(qtw.QMainWindow):
             # create div elements with the name corresponding to the file
             if filename_anchors: 
                 # tried 'name' and 'id'
-                toc_div = ETree.Element('div', {'id': the_item.get_name()})
+                item_name = the_item.get_name()
+                if item_name.startswith('xhtml/'):
+                    item_name = item_name[6:]
+                toc_div = ETree.Element('div', {'id': item_name})
                 if _debug:
                     print("ANCHOR ADDED:", list(toc_div.items()))
                 for child in body:
