@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 ## studious main
 
 import sys
@@ -12,7 +14,8 @@ from ebooklib import epub
 
 import xml.etree.ElementTree as ETree
 
-_debug = False
+_debug = True
+_dumpHTML = False
 
 def unique_list(l):
     ulist = []
@@ -30,7 +33,8 @@ class EPubTextBrowser(qtw.QTextBrowser):
     def loadResource(self, restype, url):
         """Override to load images that are within the epub."""
         if restype == 2 and url.isRelative():
-            print("Image resource found: ", url.toDisplayString())
+            if _debug:
+                print("Image resource found: ", url.toDisplayString())
             # get file part of it. OR, load as path from zip?
             # for now, assume filename part of URL is the ID.
             imgHref = url.toDisplayString()
@@ -39,7 +43,8 @@ class EPubTextBrowser(qtw.QTextBrowser):
             image = self.the_epub.get_item_with_href(imgHref)
             # image = self.the_epub.get_item_with_id(url.fileName())
             if image:
-                print("successfully loaded image of type", type(image))
+                if _debug:
+                    print("successfully loaded image of type", type(image))
                 image = qtg.QImage.fromData(image.get_content())
                 if image.width() > (self.width() * 0.8):
                     image = image.scaledToWidth(
@@ -48,8 +53,10 @@ class EPubTextBrowser(qtw.QTextBrowser):
                 # It accepts anything as the variant! Python!
                 return image
             else:
-                print("image load failed")
+                print("image load failed:", imgHref)
             # should we fetch external images? maybe not
+        if _debug:
+            print("loading non-image resource", url)
         super(EPubTextBrowser, self).loadResource(restype, url)
         
 # Inheriting from QMainWindow broke the layouts.
@@ -75,16 +82,17 @@ class MainWindow(qtw.QMainWindow):
         self.resize(960,600)
 
         ### Menu items
-        # TODO: open.png doesn't exist
         openPixmap = getattr(qtw.QStyle, 'SP_DialogOpenButton')
         openIcon = self.style().standardIcon(openPixmap)
         openAction = qtw.QAction(openIcon, '&Open', self)
+        openAction.setShortcut(qtg.QKeySequence("Ctrl+o"))
         openAction.triggered.connect(self.open_new_file)
         menuBar = qtw.QMenuBar(self)
         fileMenu = menuBar.addMenu("&File")
         fileMenu.addAction(openAction)
         self.setMenuBar(menuBar)
-        
+
+        ### The tricky layout to get the panes to work correctly.
         topLayout = qtw.QHBoxLayout()
         window.setLayout(topLayout)
         
@@ -257,9 +265,9 @@ class MainWindow(qtw.QMainWindow):
         #doc_items = the_epub.get_items_of_type(ebooklib.ITEM_DOCUMENT)
         #doc_list = list(doc_items)
         all_items = the_epub.get_items()
-        for item in list(all_items):
+        #for item in list(all_items):
             # will I have to make my own dictionary of these?
-            print("ITEM", item.file_name, item.get_id(), item.get_type())
+            # print("ITEM", item.file_name, item.get_id(), item.get_type())
 
         print(the_epub.spine)
         self.tocPane.clear()
@@ -275,7 +283,7 @@ class MainWindow(qtw.QMainWindow):
         first_text = first_item.get_content().decode('utf-8')
         doc_tree = ETree.fromstring(first_text)
         doc_body = doc_tree.find('{http://www.w3.org/1999/xhtml}body')
-        for uid, linear in the_epub.spine[1:]: # file_hrefs[1:]:
+        for uid, linear in the_epub.spine: # [1:] # file_hrefs[1:]:
             # TODO: if it's not linear, put it at the end.
             if _debug:
                 print("LOADITEM:", uid)
@@ -284,22 +292,24 @@ class MainWindow(qtw.QMainWindow):
             tree = ETree.fromstring(text)
             body = tree.find('{http://www.w3.org/1999/xhtml}body')
             # body.insert (anchor element, 0)?
-            if filename_anchors: # create div elements if it's a filename
+            # create div elements with the name corresponding to the file
+            if filename_anchors: 
                 # tried 'name' and 'id'
                 toc_div = ETree.Element('div', {'id': the_item.get_name()})
                 if _debug:
                     print("ANCHOR ADDED:", list(toc_div.items()))
                 for child in body:
                     # why is 0 okay?
-                    toc_div.insert(0, child)
-                    print("CHILD ADDED")
+                    #toc_div.insert(0, child)
+                    toc_div.append(child)
+                    # print("CHILD ADDED")
                 doc_body.append(toc_div)
             else:
                 for child in body:
                     doc_body.append(child)
         fulltext = ETree.tostring(doc_tree, encoding='unicode')
         self.mainText.setHtml(fulltext)
-        if _debug:
+        if _dumpHTML:
             print(fulltext)
         # TODO: have spinny until finished loading, so it won't be
         #  unresponsive (see the Bible)
@@ -316,9 +326,10 @@ if __name__ == "__main__":
     window = MainWindow()
     if len(sys.argv) > 1:
         bookFilename = sys.argv[1]
-    else:
-        bookFilename = "testbooks/bram-stoker_dracula.epub"
-    window.load_epub(bookFilename)
+        window.load_epub(bookFilename)
+    #else:
+    #    bookFilename = "testbooks/bram-stoker_dracula.epub"
+    #
 
     # this trick passes the app's exit code back to the OS.
     sys.exit(app.exec_())
