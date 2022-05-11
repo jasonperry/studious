@@ -3,6 +3,8 @@
 ## studious main
 
 import sys
+import hashlib
+from base32c import cb32encode
 # from Moore's book
 from PySide2 import QtWidgets as qtw
 from PySide2 import QtGui as qtg
@@ -261,10 +263,22 @@ class MainWindow(qtw.QMainWindow):
                 newRow.setExpanded(True)
         return filename_anchors
 
+    def load_notes(self, bookfilename, author_last):
+        '''Load the notes file corresponding to a book's hash into the
+        notes pane.'''
+        hasher = hashlib.sha256()
+        bookfile = open(bookfilename, 'rb')
+        hasher.update(bookfile.read())
+        bookfile.close()
+        b32str = cb32encode(hasher.digest()[:10])
+        print("hash encode: ", author_last[:3] + '_' + b32str)
+    
     
     def load_epub(self, filename):
+        '''Load epub content, and also call out to generate the TOC and
+        load the notes file.'''
         the_epub = epub.read_epub(filename)
-        self.mainText.set_epub(the_epub)
+        self.mainText.set_epub(the_epub) # have to set early
         #for k,v in the_epub.__dict__.items():
         #    print(k, ':', v)
             
@@ -275,7 +289,8 @@ class MainWindow(qtw.QMainWindow):
             # will I have to make my own dictionary of these?
             # print("ITEM", item.file_name, item.get_id(), item.get_type())
 
-        print(the_epub.spine)
+        if _debug:
+            print(the_epub.spine)
         self.tocPane.clear()
         filename_anchors = self.process_toc(the_epub.toc, self.tocPane)
         if filename_anchors:
@@ -324,21 +339,18 @@ class MainWindow(qtw.QMainWindow):
         #  unresponsive (see the Bible)
         # this lies, it says before finished loading images
         print("load finished.") 
-        # print(fulltext)
-        # good to set this at the end, in case it fails?
-        self.the_epub = the_epub
+        author_full = the_epub.get_metadata("http://purl.org/dc/elements/1.1/", "creator")[0][0]
+        author_last = author_full.split()[-1].lower()
+        print(author_last)
+        self.load_notes(filename, author_last)
 
 
 if __name__ == "__main__":
-
+    
     app = qtw.QApplication(sys.argv)
     window = MainWindow()
     if len(sys.argv) > 1:
         bookFilename = sys.argv[1]
         window.load_epub(bookFilename)
-    #else:
-    #    bookFilename = "testbooks/bram-stoker_dracula.epub"
-    #
-
     # this trick passes the app's exit code back to the OS.
     sys.exit(app.exec_())
