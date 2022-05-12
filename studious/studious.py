@@ -345,8 +345,8 @@ class MainWindow(qtw.QMainWindow):
         self.load_notes(filename, author_last)
 
 
-if __name__ == "__main__":
-    
+# if __name__ == "__main__":
+def main():
     app = qtw.QApplication(sys.argv)
     window = MainWindow()
     if len(sys.argv) > 1:
