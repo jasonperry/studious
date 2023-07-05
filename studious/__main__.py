@@ -6,7 +6,7 @@ import sys
 # wheel says a "def main():" is needed for a console script
 
 # it can't find 'run' it when you run it with -m
-studious.main()
+sys.exit(studious.main())
 
 #app = qtw.QApplication(sys.argv)
 #window = MainWindow()

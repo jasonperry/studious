@@ -83,7 +83,7 @@ class MainWindow(qtw.QMainWindow):
         self.setWindowTitle("Studious Reader")
         self.resize(960,600)
 
-        ### Menu items
+        ### Menu item
         openPixmap = getattr(qtw.QStyle, 'SP_DialogOpenButton')
         openIcon = self.style().standardIcon(openPixmap)
         openAction = qtw.QAction(openIcon, '&Open', self)
@@ -341,7 +341,9 @@ class MainWindow(qtw.QMainWindow):
         print("load finished.") 
         author_full = the_epub.get_metadata("http://purl.org/dc/elements/1.1/", "creator")[0][0]
         author_last = author_full.split()[-1].lower()
-        print(author_last)
+        title = the_epub.get_metadata("DC", "title")[0][0]
+        print(author_last + ": " + title)
+        self.setWindowTitle(title + " - Studious Reader")
         self.load_notes(filename, author_last)
 
 
@@ -353,4 +355,4 @@ def main():
         bookFilename = sys.argv[1]
         window.load_epub(bookFilename)
     # this trick passes the app's exit code back to the OS.
-    sys.exit(app.exec_())
+    app.exec_()
