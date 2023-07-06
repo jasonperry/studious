@@ -2,11 +2,11 @@
 A fixed-width scrolling ePub reader.
 
 * Apologia
-Most ePub readers lay out the book in discrete pages in an attempt to
-simulate the experience of reading a physical paper book. However, they
-also reflow the whole book any time you resize the window, changing all
-the page numbers and negating a primary purpose of having discrete
-pages, which is to help orient yourself in the book.
+Most ePub reader applications lay out the book in discrete pages in an
+attempt to simulate the experience of reading a physical paper
+book. However, they also reflow the whole book any time you resize the
+window, changing all the page numbers and negating a primary purpose of
+having discrete pages, which is to help orient yourself in the book.
 
 However, layout is a hard problem; so I have instead hacked together a
 UI which renders the whole book in one continuous scrolling pane, and
@@ -21,7 +21,8 @@ contents on the left.
 There is a "notes pane" on the right but for now it doesn't save
 anything.
 
-I also need to add font and text customization features.
+I also need to add font and text customization features. You can
+currently use Ctrl-plus and Ctrl-minus to change the text size.
 
 Nonetheless, I already use this myself for reading nonfiction books. The
 non-jumpy layout does seem to help me concentrate.
