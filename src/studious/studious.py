@@ -4,7 +4,7 @@
 
 import sys
 import hashlib
-from base32c import cb32encode
+from studious.base32c import cb32encode
 # from Moore's book
 from PySide2 import QtWidgets as qtw
 from PySide2 import QtGui as qtg

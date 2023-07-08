@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "studious"
+version = "0.20"
+authors = [{name="Jason Perry", email="jasonp@posteo.net" }]
+description = "Fixed-width scrolling ePub reader"
+readme = "README.txt"
+dependencies = ["EbookLib","PySide2"]
+requires-python = ">=3.9"
+
+[project.gui-scripts]
+studious = "studious.studious:main"
+
+[project.urls]
+"Homepage" = "https://github.com/jasonperry/studious"
+"Bug Tracker" = "https://github.com/jasonperry/studious/issues"

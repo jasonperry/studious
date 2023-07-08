@@ -1,7 +1,7 @@
-#+TITLE: Studious Reader
+# Studious Reader
 A fixed-width scrolling ePub reader.
 
-* Apologia
+# Apologia
 Most ePub reader applications lay out the book in discrete pages in an
 attempt to simulate the experience of reading a physical paper
 book. However, they also reflow the whole book any time you resize the
@@ -14,7 +14,7 @@ I made the width of the text pane fixed. This way, you can see in the
 scrollbar your relative position in the book, and the lines won't "jump
 around" when you resize the window. Ta-da!
 
-* Current and Planned Features
+# Current and Planned Features
 Pretty much just opening and scrolling through a book, and a table of
 contents on the left.
 
@@ -27,9 +27,10 @@ currently use Ctrl-plus and Ctrl-minus to change the text size.
 Nonetheless, I already use this myself for reading nonfiction books. The
 non-jumpy layout does seem to help me concentrate.
 
-* Usage
-It's Python and Qt (PySide). At some point I'll make a proper package,
-but for now, if you want to run this, install ~pyside2~ and ~ebooklib~
-in your environment, download the source, and run ~python studious~.
+# Building and Running
+Download the source, then type `python -m build` in the top
+folder. Assuming that succeeds, type `pip install
+dist/studious-<ver>-py3-none-any.whl`. This should put the `studious`
+command on your PATH.
 
 Issues are welcome, but no PRs please, I'm very possessive :)
